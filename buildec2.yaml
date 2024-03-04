@@ -1,0 +1,58 @@
+---
+- name: Deploy EC2 instance and install httpbin
+  hosts: localhost
+  gather_facts: no
+  vars:
+    region: us-east-1 # Change to your AWS region
+    instance_type: t2.micro
+    ami_id: ami-123456 # Replace with the AMI ID of your choice, e.g., an Ubuntu AMI
+    key_name: my-aws-key # Change to your key pair name in AWS
+    security_group: my-security-group # Change to your security group name or ID
+    subnet_id: subnet-123456 # Change to your subnet ID
+    ansible_user: ubuntu # Change based on the AMI's default user, e.g., 'ubuntu' for Ubuntu AMIs
+
+  tasks:
+    - name: Launch EC2 instance
+      ec2:
+        key_name: "{{ key_name }}"
+        instance_type: "{{ instance_type }}"
+        image: "{{ ami_id }}"
+        wait: true
+        group: "{{ security_group }}"
+        vpc_subnet_id: "{{ subnet_id }}"
+        region: "{{ region }}"
+        assign_public_ip: yes
+      register: ec2
+
+    - name: Wait for SSH to come up
+      wait_for:
+        host: "{{ item.public_ip }}"
+        port: 22
+        delay: 60
+        timeout: 320
+        state: started
+      loop: "{{ ec2.instances }}"
+
+    - name: Add new instance to host group
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        groupname: launched
+      loop: "{{ ec2.instances }}"
+
+- name: Install httpbin on the instance
+  hosts: launched
+  become: yes
+  tasks:
+    - name: Update and install docker
+      apt:
+        name: docker.io
+        state: latest
+        update_cache: yes
+
+    - name: Start httpbin container
+      docker_container:
+        name: httpbin
+        image: kennethreitz/httpbin
+        state: started
+        published_ports:
+          - "80:80"
