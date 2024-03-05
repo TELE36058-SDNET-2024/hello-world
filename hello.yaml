@@ -3,8 +3,8 @@
   hosts: localhost
 
   vars:
-    name: {{ name }}  
+    name: "{{ name }}  "
   tasks:
     - name: Print a message
       debug:
-        msg: "Hello World + " {{ name }}
+        msg: "Hello World + " + "{{ name }}"
