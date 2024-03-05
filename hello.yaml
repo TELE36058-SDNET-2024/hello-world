@@ -1,7 +1,10 @@
 ---
 - name: Hello World playbook
   hosts: localhost
+
+  vars:
+    name: {{ name }}  
   tasks:
     - name: Print a message
       debug:
-        msg: "Hello World"
+        msg: "Hello World + " {{ name }}
